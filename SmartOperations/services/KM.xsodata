@@ -1,0 +1,4 @@
+service namespace "sap.hana.smart.operation"{
+	
+	"SMART_OPERATION"."KMOBJ_TBL1" as "KMOBJ_TBL1" keys("ARCHOBJ","TABLENAME");
+}

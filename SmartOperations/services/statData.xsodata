@@ -1,0 +1,4 @@
+service namespace "sap.hana.smart.operation"{
+ "SMART_OPERATION"."PREDICT_STATISTICS_SOURCE" as "STATISDATA";
+ "SMART_OPERATION"."PREDICT_STATS" as "STATSOVERVIEW" key ("FACTOR_GUID");
+}
