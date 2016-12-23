@@ -16,39 +16,86 @@ function handleGet() {
 	//var data = $.request.body.asString();
 	//var dataParsed= JSON.parse(data);
 	
-	var factorId = $.request.parameters.get("factorId");
+	var factorName = $.request.parameters.get("factorName");
+	var factorCate = $.request.parameters.get("factorCate");
+	var customerId = $.request.parameters.get("customerId");
+	var sysId = $.request.parameters.get("sysId");
+	var sysClt = $.request.parameters.get("sysClt");
 
 
-	/*if(data === null)
+	if(factorName === "" || factorCate === "" || customerId === "" || sysId === "" || sysClt === "")
 	{
 		
 		return {"myResult":"Error Parameter"};
-	}*/
+	}
 	
-	var connCheck = $.db.getConnection();
-	var checkStr = 'DELETE FROM "SMART_OPERATION"."PREDICT_FACTOR_MASTER" WHERE FACTOR_GUID = ?';
-	var kst = connCheck.prepareStatement(checkStr);
-	kst.setInteger(1,parseInt(factorId));
-	kst.execute();
-	kst.close();
-	connCheck.commit();
-	connCheck.close();
 	
-	var connDel = $.db.getConnection();
-	var delStr = 'DELETE FROM "SMART_OPERATION"."PREDICT_FACTOR_CONFIG" WHERE FACTOR_TARGET = ?';
-	var dst = connDel.prepareStatement(delStr);
-	dst.setInteger(1,parseInt(factorId));
-	dst.execute();
-	dst.close();
-	connDel.commit();
-	connDel.close();
 	
+
+	var connCall = $.db.getConnection();	
+	//var callStr = 'CALL "SMART_OPERATION"."EA_PROC"(?,?)';
+	//var callStr = 'CALL RCA_PROC('SLG1','S','1001','KEV','001',?)';
+	var callStr = 'CALL "SMART_OPERATION"."RCA_PROC"(?,?,?,?,?,?)';
+	var cst = connCall.prepareCall(callStr);
+	
+	//cstCall.setInteger(1,parseInt(dataParsed["factorId"]));
+	cst.setString(1,factorName);
+	cst.setString(2,factorCate);
+	cst.setString(3,customerId);
+	cst.setString(4,sysId);
+	cst.setString(5,sysClt);
+	
+	cst.execute();
+	
+	var predictId = cst.getInteger(6);
+	
+	cst.close();
+	connCall.commit();
+	connCall.close();
+	
+	//END -- CALL Procedure
+	
+	//START -- SELECT Results
+	//temp
+	//var predictId = 250;
+	//temp end
+	
+	var connSelect = $.db.getConnection();
+	var pst;
+	var	queryStr = 'SELECT FACTOR_SOURCE, SOURCE_CATE, SOURCE_TYPE, INFLUENCE_RATE from "SMART_OPERATION"."SMOPS_SIG" where PREDICT_ID = ? order by INFLUENCE_RATE desc';
+	pst = connSelect.prepareStatement(queryStr);
+	
+	pst.setInteger(1,predictId);
+	
+	pst.executeQuery();
+	
+	var output = {
+			"results":[]
+	};
+	
+	var	result = pst.getResultSet() ;
+	while(result.next())
+	{
+		output.results.push({
+			"FACTOR_GUID":result.getString(1),
+			"FACTOR_CATEGORY": result.getString(2),
+			"FACTOR_TYPE": result.getString(3),
+			"FACTOR_NAME":result.getString(1),
+			"INFLUENCE_RATE":result.getString(4)
+			
+		});
+		
+	}
+	result.close();
+	pst.close();
+	connSelect.commit();
+	connSelect.close();
 		
 	//END -- SELECT Results
 	
 	// Extract body insert data to DB and return results in JSON/other format
 	$.response.status = $.net.http.CREATED;
-    return $.response.status;
+    return output;
 }
 
 //Implementation of POST call

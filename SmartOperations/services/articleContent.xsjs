@@ -65,7 +65,7 @@ function handleGet() {
 		
 		var connSelectHdr = $.db.getConnection();
 		var pstHdr;
-		var	queryStrHdr = 'SELECT ARTICLE_ID, FACTOR_GUID, ARCHOBJ, CUSTOMER_ID, ARTICLE_NAM, ARTICLE_DSC, CREATE_ON, CREATE_BY, TOTAL_SIZE, ARCHIVING, DELETION, SUMMARIZATION, AVOIDANCE, RETENTION, SAVING_EST, SAVING_EST_P,SAVING_ACT,SAVING_ACT_P,COMMENT FROM "SMART_OPERATION"."KMTOTAL" WHERE ARTICLE_ID = ? ORDER BY CREATE_ON DESC';
+		var	queryStrHdr = 'SELECT ARTICLE_ID, FACTOR_GUID, ARCHOBJ, CUSTOMER_ID, ARTICLE_NAM, ARTICLE_DSC, CREATE_ON, CREATE_BY, TOTAL_SIZE, ARCHIVING, DELETION, SUMMARIZATION, AVOIDANCE, RETENTION, SAVING_EST, SAVING_EST_P,SAVING_ACT,SAVING_ACT_P,COMMENT,FACTOR_TYP FROM "SMART_OPERATION"."KMTOTAL" WHERE ARTICLE_ID = ? ORDER BY CREATE_ON DESC';
 		pstHdr = connSelectHdr.prepareStatement(queryStrHdr);
 		
 		pstHdr.setInteger(1,parseInt(articleId));
@@ -95,6 +95,7 @@ function handleGet() {
 				"SAVING_ACT":resultHdr.getString(17),
 				"SAVING_ACT_P":resultHdr.getString(18),
 				"COMMENT":resultHdr.getString(19),
+				"FACTOR_TYPE":resultHdr.getString(20),
 				"TABLES":outputTbl.TABLES
 			});	
 		}
@@ -111,7 +112,7 @@ function handleGet() {
 		
 		var connSelectHdr = $.db.getConnection();
 		var pstHdr;
-		var	queryStrHdr = 'SELECT ARTICLE_ID, FACTOR_GUID, ARCHOBJ, CUSTOMER_ID, ARTICLE_NAM, ARTICLE_DSC, CREATE_ON, CREATE_BY, TOTAL_SIZE, ARCHIVING, DELETION, SUMMARIZATION, AVOIDANCE, RETENTION, SAVING_EST, SAVING_EST_P,SAVING_ACT,SAVING_ACT_P,COMMENT FROM "SMART_OPERATION"."KMTOTAL" WHERE CUSTOMER_ID = ? ORDER BY CREATE_ON DESC ';
+		var	queryStrHdr = 'SELECT ARTICLE_ID, FACTOR_GUID, ARCHOBJ, CUSTOMER_ID, ARTICLE_NAM, ARTICLE_DSC, CREATE_ON, CREATE_BY, TOTAL_SIZE, ARCHIVING, DELETION, SUMMARIZATION, AVOIDANCE, RETENTION, SAVING_EST, SAVING_EST_P,SAVING_ACT,SAVING_ACT_P,COMMENT,FACTOR_TYP FROM "SMART_OPERATION"."KMTOTAL" WHERE CUSTOMER_ID = ? ORDER BY CREATE_ON DESC ';
 		pstHdr = connSelectHdr.prepareStatement(queryStrHdr);
 		
 		pstHdr.setString(1,customerId);
@@ -170,14 +171,51 @@ function handleGet() {
 				"SAVING_ACT":resultHdr.getString(17),
 				"SAVING_ACT_P":resultHdr.getString(18),
 				"COMMENT":resultHdr.getString(19),
+				"FACTOR_TYPE":resultHdr.getString(20),
 				"TABLES":outputTbl.TABLES
 			});	
 					
 		}
+		
 		resultHdr.close();
 		pstHdr.close();
 		connSelectHdr.commit();
 		connSelectHdr.close();
+		
+		
+		
+		// start select from cap
+		
+		var connSelectCAP = $.db.getConnection();
+		var querystring = 'select "ARTICLE_ID", "CUSTOMER_ID", "FACTOR_CAT","FACTOR_TYP","ARTICLE_NAM","ARTICLE_DSC","CREATE_ON","CREATE_BY","UPDATE_ON","UPDATE_BY","COMMENT","CAPACITY_DATE" from "SMART_OPERATION"."KMCAPVIEW" where "CUSTOMER_ID" = ?';
+	
+			var cpaconn;
+			
+			cpaconn = connSelectCAP.prepareStatement(querystring);
+			cpaconn.setString(1,customerId);
+			cpaconn.executeQuery();
+			
+			var	resultCap = cpaconn.getResultSet() ;
+			while(resultCap.next())
+			{
+				output.results.push({
+					"ARTICLE_ID": resultCap.getString(1),
+					"CUSTOMER_ID": resultCap.getString(2),
+					"FACTOR_CAT":resultCap.getString(3),
+					"FACTOR_TYPE":resultCap.getString(4),
+					"ARTICLE_NAM":resultCap.getString(5),
+					"ARTICLE_DSC":resultCap.getString(6),
+					"CREATE_ON":resultCap.getString(7),
+					"CREATE_BY":resultCap.getString(8),
+					"UPDATE_ON":resultCap.getString(9),
+					"UPDATE_BY":resultCap.getString(10),
+					"COMMENT":resultCap.getString(11),
+					"CAPACITY_DATE":resultCap.getString(12),
+				});	
+			}
+			resultCap.close();
+			
+		
 	}
 	
 	
@@ -199,7 +237,7 @@ function handlePost() {
 	var bodyStr = $.request.body ? $.request.body.asString() : undefined;
 	if ( bodyStr === undefined ){
 		 $.response.status = $.net.http.INTERNAL_SERVER_ERROR;
-		 return {"myResult":"Missing BODY"};
+;		 return {"myResult":"Missing BODY"};
 	}
 	// Extract body insert data to DB and return results in JSON/other format
 	$.response.status = $.net.http.CREATED;

@@ -26,6 +26,79 @@ function handlePost() {
 	//judge for different TABLE
 	switch(tableName){
 	
+		case 'CMTBL':
+			var userInfo = dataParsed.userInfo;
+			
+			
+			var loopIndex = 0;
+			var j = 0;
+			var respCode = true;
+			var insertStmt = conn.prepareStatement( 'INSERT INTO "SMART_OPERATION"."CMTBL" VALUES(?,?,?,?,?,?,?,0,?)' ); 
+			var upsertStmt = conn.prepareStatement( 'upsert "SMART_OPERATION"."SMOPS_MASTER" values(?,?,?,?,?,\'B\',\'TBL\',1,\'X\') where customer_id = ? and sysid = ? and sysclt = ? and factor_name = ? and factor_category = \'B\' and factor_type = \'TBL\'' );
+			
+			insertStmt.setBatchSize(100);
+			upsertStmt.setBatchSize(100);
+			
+			
+			
+				for(var i = 0; i < entryNum; i ++){
+					
+					
+					
+					var tableName = tableData[i].column_0;
+					var taanaYear = parseInt(tableData[i].column_1);
+					var taanaMonth = parseInt(tableData[i].column_2);
+					var tableEntries = parseInt(tableData[i].column_3);
+					var tableEntriesTotal = parseInt(tableData[i].column_4);
+					
+					
+					insertStmt.setString(1,userInfo.customerId);  //customer id -input
+					insertStmt.setString(2,userInfo.sysId); //sys id -input
+					insertStmt.setString(3,userInfo.sysClt); //sys client -input
+					insertStmt.setInteger(4,taanaYear);	//year -input
+					insertStmt.setInteger(5,taanaMonth);	//month -input
+					insertStmt.setString(6,tableName);	//task type -input
+					insertStmt.setInteger(7,tableEntries); //report name -input
+					insertStmt.setInteger(8,tableEntriesTotal); //db total -input
+					
+					
+					upsertStmt.setString(1,userInfo.customerId);
+					upsertStmt.setString(2,tableName);
+					upsertStmt.setString(3,tableName);
+					upsertStmt.setString(4,userInfo.sysId);
+					upsertStmt.setString(5,userInfo.sysClt);
+					upsertStmt.setString(6,userInfo.customerId);
+					upsertStmt.setString(7,userInfo.sysId);
+					upsertStmt.setString(8,userInfo.sysClt);
+					upsertStmt.setString(9,tableName);
+					
+	
+					
+					insertStmt.addBatch(); 
+					upsertStmt.addBatch();
+				}
+			
+			
+			var respArr = insertStmt.executeBatch();
+			var respArrU = upsertStmt.executeBatch();
+			insertStmt.close();
+			upsertStmt.close();
+			
+			for(var i = 0; i < entryNum; i++){
+				if(respArr[i] < 0){
+					respCode = false;
+					$.response.status = $.net.http.OK;
+				    return {
+				    	"RespondCode": respCode
+				    };
+				}
+			}
+			
+			
+			respCode = true;
+		
+		break;
+	
 		case 'KMHDR':
 			var insertStmt = conn.prepareStatement( 'INSERT INTO "SMART_OPERATION"."KMHDR" VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)' ); 
 			insertStmt.setBatchSize(entryNum);
@@ -185,39 +258,124 @@ function handlePost() {
 			var userInfo = dataParsed.userInfo;
 			var taskType = dataParsed.taskType;
 			
+			switch(taskType){
+			
+			case "DIALOG":
+				var factorType = "DIA";
+				break;
+				
+			case "BACKGROUND":
+				var factorType = "BTC";
+				break;
+				
+			case "RFC":
+				var factorType = "RFC";
+				break;
+				
+			default:
+				var factorType = "OTH";
+				break;
+			
+			}
+			
 			var loopIndex = 0;
 			var j = 0;
 			var respCode = true;
 			
 			
 			var insertStmt = conn.prepareStatement( 'INSERT INTO "SMART_OPERATION"."CMWLP" VALUES(?,?,?,?,?,?,?,?,?,?)' ); 
-			insertStmt.setBatchSize(100);
+			var upsertStmt = conn.prepareStatement( 'upsert "SMART_OPERATION"."SMOPS_MASTER" values(?,?,?,?,?,\'S\',?,1,\'X\') where customer_id = ? and sysid = ? and sysclt = ? and factor_name = ? and factor_category = \'S\' and factor_type = ?' );
 			
-			for(var i = 0; i < entryNum; i ++){
+			insertStmt.setBatchSize(100);
+			upsertStmt.setBatchSize(100);
+			
+			if(taskType == "BACKGROUND"){
+			
+				for(var i = 0; i < entryNum; i ++){
+					
+					var cpuTotal_s = parseFloat((tableData[i].column_7 == "") ? "0" : tableData[i].column_7);
+					var dbTotal_s = parseFloat((tableData[i].column_9 == "") ? "0" : tableData[i].column_9);
+					
+					var cpuTotal = parseFloat((cpuTotal_s / 3600).toFixed(1));
+					var dbTotal = parseFloat((dbTotal_s / 3600).toFixed(1));
+					
+					var respTotal = cpuTotal + dbTotal;
+					
+					insertStmt.setString(1,userInfo.customerId);  //customer id -input
+					insertStmt.setString(2,userInfo.sysId); //sys id -input
+					insertStmt.setString(3,userInfo.sysClt); //sys client -input
+					insertStmt.setInteger(4,parseInt(userInfo.dateYear));	//year -input
+					insertStmt.setInteger(5,parseInt(userInfo.dateMonth));	//month -input
+					insertStmt.setString(6,taskType);	//task type -input
+					insertStmt.setString(7,tableData[i].column_0); //report name -input
+					insertStmt.setDouble(8,cpuTotal); //cpu total -input
+					insertStmt.setDouble(9,dbTotal); //db total -input
+					insertStmt.setDouble(10,respTotal); //cpu + db  -cal
+					
+					upsertStmt.setString(1,userInfo.customerId);
+					upsertStmt.setString(2,tableData[i].column_0);
+					upsertStmt.setString(3,tableData[i].column_0);
+					upsertStmt.setString(4,userInfo.sysId);
+					upsertStmt.setString(5,userInfo.sysClt);
+					upsertStmt.setString(6,factorType);
+					upsertStmt.setString(7,userInfo.customerId);
+					upsertStmt.setString(8,userInfo.sysId);
+					upsertStmt.setString(9,userInfo.sysClt);
+					upsertStmt.setString(10,tableData[i].column_0);
+					upsertStmt.setString(11,factorType);
+					
+	
+					
+					insertStmt.addBatch(); 
+					upsertStmt.addBatch();
+				}
+			}
+			else if(taskType == "DIALOG" || taskType == "RFC"){
 				
-				var cpuTotal = parseFloat((tableData[i].column_7 == "") ? "0" : tableData[i].column_7);
-				var dbTotal = parseFloat((tableData[i].column_9 == "") ? "0" : tableData[i].column_9);
-				
-				var respTotal = cpuTotal + dbTotal;
-				
-				insertStmt.setString(1,userInfo.customerId);  //customer id -input
-				insertStmt.setString(2,userInfo.sysId); //sys id -input
-				insertStmt.setString(3,userInfo.sysClt); //sys client -input
-				insertStmt.setInteger(4,parseInt(userInfo.dateYear));	//year -input
-				insertStmt.setInteger(5,parseInt(userInfo.dateMonth));	//month -input
-				insertStmt.setString(6,taskType);	//task type -input
-				insertStmt.setString(7,tableData[i].column_0); //report name -input
-				insertStmt.setDouble(8,cpuTotal); //cpu total -input
-				insertStmt.setDouble(9,dbTotal); //db total -input
-				insertStmt.setDouble(10,respTotal); //cpu + db  -cal
-
-				
-				insertStmt.addBatch(); 
+				for(var i = 0; i < entryNum; i ++){
+					
+					var cpuTotal_s = parseFloat((tableData[i].column_6 == "") ? "0" : tableData[i].column_6);
+					var dbTotal_s = parseFloat((tableData[i].column_8 == "") ? "0" : tableData[i].column_8);
+					
+					var cpuTotal = parseFloat((cpuTotal_s / 3600).toFixed(1));
+					var dbTotal = parseFloat((dbTotal_s / 3600).toFixed(1));
+					
+					var respTotal = cpuTotal + dbTotal;
+					
+					insertStmt.setString(1,userInfo.customerId);  //customer id -input
+					insertStmt.setString(2,userInfo.sysId); //sys id -input
+					insertStmt.setString(3,userInfo.sysClt); //sys client -input
+					insertStmt.setInteger(4,parseInt(userInfo.dateYear));	//year -input
+					insertStmt.setInteger(5,parseInt(userInfo.dateMonth));	//month -input
+					insertStmt.setString(6,taskType);	//task type -input
+					insertStmt.setString(7,tableData[i].column_0); //report name -input
+					insertStmt.setDouble(8,cpuTotal); //cpu total -input
+					insertStmt.setDouble(9,dbTotal); //db total -input
+					insertStmt.setDouble(10,respTotal); //cpu + db  -cal
+					
+					upsertStmt.setString(1,userInfo.customerId);
+					upsertStmt.setString(2,tableData[i].column_0);
+					upsertStmt.setString(3,tableData[i].column_0);
+					upsertStmt.setString(4,userInfo.sysId);
+					upsertStmt.setString(5,userInfo.sysClt);
+					upsertStmt.setString(6,factorType);
+					upsertStmt.setString(7,userInfo.customerId);
+					upsertStmt.setString(8,userInfo.sysId);
+					upsertStmt.setString(9,userInfo.sysClt);
+					upsertStmt.setString(10,tableData[i].column_0);
+					upsertStmt.setString(11,factorType);
+	
+					
+					insertStmt.addBatch(); 
+					upsertStmt.addBatch();
+				}
 			}
 			
 			
 			var respArr = insertStmt.executeBatch();
+			var respArrU = upsertStmt.executeBatch();
 			insertStmt.close();
+			upsertStmt.close();
 			
 			for(var i = 0; i < entryNum; i++){
 				if(respArr[i] < 0){
@@ -228,54 +386,9 @@ function handlePost() {
 				    };
 				}
 			}
-			/*while(loopIndex < entryNum)
-			
-			{
-				var insertStmt = conn.prepareStatement( 'INSERT INTO "SMART_OPERATION"."CMWLP" VALUES(?,?,?,?,?,?,?,?,?,?)' ); 
-				insertStmt.setBatchSize(100);
-				
-				for(var i = 0; i < 100; i ++){
-					j = loopIndex + i;
-					
-					var cpuTotal = parseFloat((tableData[j].column_7 == "") ? "0" : tableData[j].column_7);
-					var dbTotal = parseFloat((tableData[j].column_9 == "") ? "0" : tableData[j].column_9);
-					
-					var respTotal = cpuTotal + dbTotal;
-					
-					insertStmt.setString(1,userInfo.customerId);  //customer id -input
-					insertStmt.setString(2,userInfo.sysId); //sys id -input
-					insertStmt.setString(3,userInfo.sysClt); //sys client -input
-					insertStmt.setInteger(4,parseInt(userInfo.dateYear));	//year -input
-					insertStmt.setInteger(5,parseInt(userInfo.dateMonth));	//month -input
-					insertStmt.setString(6,taskType);	//task type -input
-					insertStmt.setString(7,tableData[j].column_0); //report name -input
-					insertStmt.setDouble(8,cpuTotal); //cpu total -input
-					insertStmt.setDouble(9,dbTotal); //db total -input
-					insertStmt.setDouble(10,respTotal); //cpu + db  -cal
-	
-					
-					insertStmt.addBatch(); 
-				}
-				
-				loopIndex = loopIndex + 100;
-				
-				var respArr = insertStmt.executeBatch();
-				insertStmt.close();
-				
-				for(var i = 0; i < 100; i++){
-					if(respArr[i] < 0){
-						respCode = false;
-						$.response.status = $.net.http.OK;
-					    return {
-					    	"RespondCode": respCode
-					    };
-					}
-				}
-			
-			}*/
 			
 			
-			var respCode = true;
+			respCode = true;
 			
 			
 			break;

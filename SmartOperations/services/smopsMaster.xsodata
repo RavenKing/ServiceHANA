@@ -1,0 +1,3 @@
+service namespace "sap.hana.smart.operation"{
+	"SMART_OPERATION"."SMOPS_MASTER" as "FACTORMASTER";
+}

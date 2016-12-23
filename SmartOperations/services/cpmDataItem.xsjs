@@ -1,72 +1,90 @@
 //**** Example for basic REQUEST RESPONSE handling
 var paramName; var paramValue; var headerName; var headerValue; var contentType;
 //Implementation of GET call
-
-// getCondig
 function handleGet() {
 	// Retrieve data here and return results in JSON/other format 
-	//START -- CALL Procedure
+	var customerId = $.request.parameters.get("customerId");
 	
-	/*var bodyStr = $.request.body ? $.request.body.asString() : undefined;
-	if ( bodyStr === undefined ){
-		 $.response.status = $.net.http.INTERNAL_SERVER_ERROR;
-		 return {"myResult":"Missing BODY"};
-	}*/
 	
-	//var data = $.request.body.asString();
-	//var dataParsed= JSON.parse(data);
-	
-	var factorId = $.request.parameters.get("factorId");
-
-
-	/*if(data === null)
+	if(customerId === "")
 	{
 		
 		return {"myResult":"Error Parameter"};
-	}*/
+	}
+
 	
-	var connCheck = $.db.getConnection();
-	var checkStr = 'DELETE FROM "SMART_OPERATION"."PREDICT_FACTOR_MASTER" WHERE FACTOR_GUID = ?';
-	var kst = connCheck.prepareStatement(checkStr);
-	kst.setInteger(1,parseInt(factorId));
-	kst.execute();
-	kst.close();
-	connCheck.commit();
-	connCheck.close();
+	var connSelect = $.db.getConnection();
+	var pst;
+	//var	queryStr = 'SELECT WEEKNUM, DATETIME, REALVALUE, PREDICTVALUE from "SMART_OPERATION"."PREDICT_HIST_DATA" where PREDICT_ID = ?';
 	
-	var connDel = $.db.getConnection();
-	var delStr = 'DELETE FROM "SMART_OPERATION"."PREDICT_FACTOR_CONFIG" WHERE FACTOR_TARGET = ?';
-	var dst = connDel.prepareStatement(delStr);
-	dst.setInteger(1,parseInt(factorId));
-	dst.execute();
-	dst.close();
-	connDel.commit();
-	connDel.close();
+	var queryStr = 'SELECT TOP 5 DISTINCT DATE_Y, DATA_M FROM "SMART_OPERATION"."CMWLH" WHERE CUSTOMER_ID = ? ORDER BY DATE_Y DESC, DATA_M DESC';
 	
+	pst = connSelect.prepareStatement(queryStr);
+	
+	pst.setString(1,customerId);
+	
+	pst.executeQuery();
+	
+	var output = {
+			"results":[]
+	};
+	
+	var	result = pst.getResultSet() ;
+	while(result.next())
+	{
+		
+		output.results.push({
+			"ITEM_NAME":result.getString(1) + '-' + result.getString(2)	,
+			"category": 'CPM-Overview',
+			"dateYear": result.getString(1),
+			"dateMonth": result.getString(2),
+			"customerId": customerId
+		});
+		
+	}
+	//////////
+	output.results.push({
+		"ITEM_NAME":'Last 3 Months',
+		"category": 'CPM-History',
+		"monthCount": "3",
+		"latestYear": output.results[0].dateYear,
+		"latestMonth": output.results[0].dateMonth,
+		"customerId": customerId
+	});
+	output.results.push({
+		"ITEM_NAME":'Last 6 Months',
+		"category": 'CPM-History',
+		"monthCount": "6",
+		"latestYear": output.results[0].dateYear,
+		"latestMonth": output.results[0].dateMonth,
+		"customerId": customerId
+	});
+	output.results.push({
+		"ITEM_NAME":'Last 12 Months',
+		"category": 'CPM-History',
+		"monthCount": "12",
+		"latestYear": output.results[0].dateYear,
+		"latestMonth": output.results[0].dateMonth,
+		"customerId": customerId
+	});
+	
+	
+	/////////////
+	result.close();
+	pst.close();
+	connSelect.commit();
+	connSelect.close();
 		
 	//END -- SELECT Results
 	
 	// Extract body insert data to DB and return results in JSON/other format
 	$.response.status = $.net.http.CREATED;
-    return $.response.status;
+    return output;
 }
-
 //Implementation of POST call
 function handlePost() {
 	
-	
-	var bodyStr = $.request.body ? $.request.body.asString() : undefined;
-	if ( bodyStr === undefined ){
-		 $.response.status = $.net.http.INTERNAL_SERVER_ERROR;
-		 return {"myResult":"Missing BODY"};
-	}
-	// Extract body insert data to DB and return results in JSON/other format
-	$.response.status = $.net.http.CREATED;
-    return {"myResult":"POST success"};
-	
-	
 }
-
 // Check Content type headers and parameters
 function validateInput() {
 	var i; var j;
@@ -99,7 +117,6 @@ function processRequest(){
 		        //Handle your GET calls here
 		        case $.net.http.GET:
 		            $.response.setBody(JSON.stringify(handleGet()));
-
 		            break;
 		            //Handle your POST calls here
 		        case $.net.http.POST:
@@ -117,8 +134,5 @@ function processRequest(){
 		}
 	}
 }
+// Call request processing  
 processRequest();
-
-
-
-
