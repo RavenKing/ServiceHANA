@@ -44,13 +44,13 @@ function handleGet() {
 		
 		var pconnSelect = $.db.getConnection();
 		
-		//var	queryStr = 'SELECT WEEKNUM, DATETIME, REALVALUE, PREDICTVALUE from "SMART_OPERATION"."PREDICT_HIST_DATA" where PREDICT_ID = ?';
+		//var queryStr = 'SELECT WEEKNUM, DATETIME, REALVALUE, PREDICTVALUE from "SMART_OPERATION"."PREDICT_HIST_DATA" where PREDICT_ID = ?';
 		
 		//var queryStr = 'SELECT SUM( CPU_DB_TOTAL ) FROM "SMART_OPERATION"."CMWLH" WHERE CUSTOMER_ID = ? AND DATE_Y = ? AND DATA_M = ?';
 		
 		//var queryStr = 'select top ? date_y, data_m, sum(cpu_total), sum(db_total), sum(step_num) from "SMART_OPERATION"."CMWLH" where customer_id = ? group by date_y, data_m order by date_y asc, data_m asc';
 		
-		var queryStr = 'SELECT DATE_Y, DATE_M, SUM( CPU_DB_TOTAL ) FROM "SMART_OPERATION"."CMWLP" WHERE CUSTOMER_ID = ? AND SYSTEM_ID = ? AND SYSTEM_CLT = ? AND TASK_TYPE = ? AND REPORT_NAME = ? GROUP BY DATE_Y, DATE_M ORDER BY DATE_Y ASC, DATE_M ASC';
+		var queryStr = 'SELECT DATE_Y, DATE_M, SUM( RESP_AVG ),SUM( RESP_TOTAL ),sum( STEP ) FROM "SMART_OPERATION"."CMWLP" WHERE CUSTOMER_ID = ? AND SYSTEM_ID = ? AND SYSTEM_CLT = ? AND TASK_TYPE = ? AND REPORT_NAME = ? GROUP BY DATE_Y, DATE_M ORDER BY DATE_Y ASC, DATE_M ASC';
 		
 		ppst = pconnSelect.prepareStatement(queryStr);
 		
@@ -73,7 +73,9 @@ function handleGet() {
 			
 			output.results.push({
 				"YEAR_MONTH": presult.getString(1) + '-' + presult.getString(2),
-				"CPU_DB_TIME":parseFloat(parseFloat(presult.getString(3)).toFixed(2))
+				"AVG_TIME":parseFloat(parseFloat(presult.getString(3)).toFixed(2)),
+				"TOTAL_TIME":parseFloat(parseFloat(presult.getString(4)).toFixed(2)),
+				"STEP":parseInt(presult.getString(5))
 			});
 			
 		}

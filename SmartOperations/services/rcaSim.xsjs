@@ -14,7 +14,7 @@ function handlePost() {
 	}
 	var data = JSON.parse($.request.body.asString());
 	
-	var connCall = $.db.getConnection();
+	/*var connCall = $.db.getConnection();
 	
 	
 	
@@ -29,7 +29,7 @@ function handlePost() {
 	
 	cst.close();
 	connCall.commit();
-	connCall.close();
+	connCall.close();*/
 	
 
 	//var dataParsed= JSON.parse(data);
@@ -62,11 +62,14 @@ function handlePost() {
 	
 	}*/
 	
-	var pst = connSelect.prepareStatement('INSERT INTO "SMART_OPERATION"."TEST_TEST_TEST" VALUES(1,123.3,123.4,123.5)');
+	var string = 'INSERT INTO \"SMART_OPERATION\".\"TEST_TEST_TEST\" VALUES(2,123.3,123.4,123.5)';
+	var pst = connSelect.prepareStatement(string);
 	pst.execute();
 	//var respArr = pst.execute();
 	
 	pst.close();
+	connSelect.commit();
+	connSelect.close();
 	
 	/*var respCode = true;
 	
@@ -92,7 +95,7 @@ function handlePost() {
 		//"data.factorValueArr.length": data.factorValueArr.length,
 		//"data.factorValueArr[1][2]": data.factorValueArr[1][2]
 		
-		"output": data
+		"output": pst
 		
 		
 		

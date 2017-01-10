@@ -283,7 +283,7 @@ function handlePost() {
 			var respCode = true;
 			
 			
-			var insertStmt = conn.prepareStatement( 'INSERT INTO "SMART_OPERATION"."CMWLP" VALUES(?,?,?,?,?,?,?,?,?,?)' ); 
+			var insertStmt = conn.prepareStatement( 'INSERT INTO "SMART_OPERATION"."CMWLP" VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)' ); 
 			var upsertStmt = conn.prepareStatement( 'upsert "SMART_OPERATION"."SMOPS_MASTER" values(?,?,?,?,?,\'S\',?,1,\'X\') where customer_id = ? and sysid = ? and sysclt = ? and factor_name = ? and factor_category = \'S\' and factor_type = ?' );
 			
 			insertStmt.setBatchSize(100);
@@ -301,6 +301,12 @@ function handlePost() {
 					
 					var respTotal = cpuTotal + dbTotal;
 					
+					var procStep = parseInt((tableData[i].column_2 == "") ? "0" : tableData[i].column_2);
+					var respAvg_ms = parseFloat((tableData[i].column_4 == "") ? "0" : tableData[i].column_4);
+					var respTotalSecond = parseFloat((tableData[i].column_3 == "") ? "0" : tableData[i].column_3);
+					
+					var respAvg = parseFloat((respAvg_ms / 1000).toFixed(1));
+					
 					insertStmt.setString(1,userInfo.customerId);  //customer id -input
 					insertStmt.setString(2,userInfo.sysId); //sys id -input
 					insertStmt.setString(3,userInfo.sysClt); //sys client -input
@@ -311,6 +317,10 @@ function handlePost() {
 					insertStmt.setDouble(8,cpuTotal); //cpu total -input
 					insertStmt.setDouble(9,dbTotal); //db total -input
 					insertStmt.setDouble(10,respTotal); //cpu + db  -cal
+					//for avg resp and steps
+					insertStmt.setInteger(11,procStep);//step
+					insertStmt.setDouble(12,respAvg);//response time avg
+					insertStmt.setDouble(13,respTotalSecond);//total resp time by second
 					
 					upsertStmt.setString(1,userInfo.customerId);
 					upsertStmt.setString(2,tableData[i].column_0);
@@ -342,6 +352,12 @@ function handlePost() {
 					
 					var respTotal = cpuTotal + dbTotal;
 					
+					var procStep = parseInt((tableData[i].column_1 == "") ? "0" : tableData[i].column_1);
+					var respAvg_ms = parseFloat((tableData[i].column_3 == "") ? "0" : tableData[i].column_3);
+					var respTotalSecond = parseFloat((tableData[i].column_2 == "") ? "0" : tableData[i].column_2);
+					
+					var respAvg = parseFloat((respAvg_ms / 1000).toFixed(1));
+					
 					insertStmt.setString(1,userInfo.customerId);  //customer id -input
 					insertStmt.setString(2,userInfo.sysId); //sys id -input
 					insertStmt.setString(3,userInfo.sysClt); //sys client -input
@@ -352,6 +368,10 @@ function handlePost() {
 					insertStmt.setDouble(8,cpuTotal); //cpu total -input
 					insertStmt.setDouble(9,dbTotal); //db total -input
 					insertStmt.setDouble(10,respTotal); //cpu + db  -cal
+					//for avg resp and steps
+					insertStmt.setInteger(11,procStep);//step
+					insertStmt.setDouble(12,respAvg);//response time avg
+					insertStmt.setDouble(13,respTotalSecond);//total resp time by second
 					
 					upsertStmt.setString(1,userInfo.customerId);
 					upsertStmt.setString(2,tableData[i].column_0);
