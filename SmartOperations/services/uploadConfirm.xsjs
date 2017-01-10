@@ -33,8 +33,10 @@ function handlePost() {
 			var loopIndex = 0;
 			var j = 0;
 			var respCode = true;
-			var insertStmt = conn.prepareStatement( 'INSERT INTO "SMART_OPERATION"."CMTBL" VALUES(?,?,?,?,?,?,?,0,?)' ); 
-			var upsertStmt = conn.prepareStatement( 'upsert "SMART_OPERATION"."SMOPS_MASTER" values(?,?,?,?,?,\'B\',\'TBL\',1,\'X\') where customer_id = ? and sysid = ? and sysclt = ? and factor_name = ? and factor_category = \'B\' and factor_type = \'TBL\'' );
+			//var insertStmt = conn.prepareStatement( 'INSERT INTO "SMART_OPERATION"."CMTBL" VALUES(?,?,?,?,?,?,?,0,?)' ); 
+			
+			var insertStmt = conn.prepareStatement( 'UPSERT "SMART_OPERATION"."CMTBL" VALUES(?,?,?,?,?,?,?,NULL,?) WHERE CUSTOMER_ID = ? AND SYSTEM_ID = ? AND SYSTEM_CLT = ? AND DATE_Y = ? AND DATE_M = ? AND TABLE_NAME = ?' );
+			var upsertStmt = conn.prepareStatement( 'upsert "SMART_OPERATION"."SMOPS_MASTER" values(?,?,?,?,?,\'B\',\'TBL\',null,\'X\') where customer_id = ? and sysid = ? and sysclt = ? and factor_name = ? and factor_category = \'B\' and factor_type = \'TBL\'' );
 			
 			insertStmt.setBatchSize(100);
 			upsertStmt.setBatchSize(100);
@@ -49,7 +51,8 @@ function handlePost() {
 					var taanaYear = parseInt(tableData[i].column_1);
 					var taanaMonth = parseInt(tableData[i].column_2);
 					var tableEntries = parseInt(tableData[i].column_3);
-					var tableEntriesTotal = parseInt(tableData[i].column_4);
+					var tableEntriesTotal = parseInt((tableData[i].column_4 === "") ? "0" : tableData[i].column_4);
+					
 					
 					
 					insertStmt.setString(1,userInfo.customerId);  //customer id -input
@@ -60,6 +63,12 @@ function handlePost() {
 					insertStmt.setString(6,tableName);	//task type -input
 					insertStmt.setInteger(7,tableEntries); //report name -input
 					insertStmt.setInteger(8,tableEntriesTotal); //db total -input
+					insertStmt.setString(9,userInfo.customerId);
+					insertStmt.setString(10,userInfo.sysId);
+					insertStmt.setString(11,userInfo.sysClt);
+					insertStmt.setInteger(12,taanaYear);
+					insertStmt.setInteger(13,taanaMonth);
+					insertStmt.setString(14,tableName);
 					
 					
 					upsertStmt.setString(1,userInfo.customerId);
@@ -80,6 +89,7 @@ function handlePost() {
 			
 			
 			var respArr = insertStmt.executeBatch();
+			
 			var respArrU = upsertStmt.executeBatch();
 			insertStmt.close();
 			upsertStmt.close();
@@ -258,6 +268,19 @@ function handlePost() {
 			var userInfo = dataParsed.userInfo;
 			var taskType = dataParsed.taskType;
 			
+			
+			if(parseInt(userInfo.dateMonth) == 1){
+				var lastMonthNode = 12;
+				var lastYearNode = parseInt(userInfo.dateYear) - 1;
+			}
+			else{
+				var lastYearNode = parseInt(userInfo.dateYear);
+				var lastMonthNode = parseInt(userInfo.dateMonth) - 1;
+			}
+			
+			var lastBaseNumber = 0.0;
+			var trendValue = 0.0;
+			
 			switch(taskType){
 			
 			case "DIALOG":
@@ -284,7 +307,7 @@ function handlePost() {
 			
 			
 			var insertStmt = conn.prepareStatement( 'INSERT INTO "SMART_OPERATION"."CMWLP" VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)' ); 
-			var upsertStmt = conn.prepareStatement( 'upsert "SMART_OPERATION"."SMOPS_MASTER" values(?,?,?,?,?,\'S\',?,1,\'X\') where customer_id = ? and sysid = ? and sysclt = ? and factor_name = ? and factor_category = \'S\' and factor_type = ?' );
+			var upsertStmt = conn.prepareStatement( 'upsert "SMART_OPERATION"."SMOPS_MASTER" values(?,?,?,?,?,\'S\',?,?,\'X\') where customer_id = ? and sysid = ? and sysclt = ? and factor_name = ? and factor_category = \'S\' and factor_type = ?' );
 			
 			insertStmt.setBatchSize(100);
 			upsertStmt.setBatchSize(100);
@@ -322,17 +345,90 @@ function handlePost() {
 					insertStmt.setDouble(12,respAvg);//response time avg
 					insertStmt.setDouble(13,respTotalSecond);//total resp time by second
 					
+					
+				///// update TREND start
+					var verifyDataExistStmt = conn.prepareStatement( 'SELECT COUNT (*) FROM "SMART_OPERATION"."CMWLP" WHERE CUSTOMER_ID = ? AND SYSTEM_ID = ? AND SYSTEM_CLT = ? AND TASK_TYPE = ? AND REPORT_NAME = ? AND DATE_Y = ? AND DATE_M = ?' ); 
+					
+					verifyDataExistStmt.setString(1,userInfo.customerId);
+					verifyDataExistStmt.setString(2,userInfo.sysId);
+					verifyDataExistStmt.setString(3,userInfo.sysClt);
+					verifyDataExistStmt.setString(4,taskType);
+					verifyDataExistStmt.setString(5,tableData[i].column_0);
+					verifyDataExistStmt.setInteger(6,lastYearNode);
+					verifyDataExistStmt.setInteger(7,lastMonthNode);
+					
+					verifyDataExistStmt.executeQuery();
+					var getCount = [];
+					var	verifyResult = verifyDataExistStmt.getResultSet();
+					
+				
+					while(verifyResult.next())
+					{
+						getCount.push({
+							"result":verifyResult.getString(1)
+						});	
+					}
+					
+					var countNumber = parseInt(getCount[0].result);
+					
+					if(countNumber == 0){
+						lastBaseNumber = 0.0;
+						trendValue = 9999.99;
+					}else{
+						var selectLastBaseStmt = conn.prepareStatement( 'SELECT SUM (RESP_TOTAL) FROM "SMART_OPERATION"."CMWLP" WHERE CUSTOMER_ID = ? AND SYSTEM_ID = ? AND SYSTEM_CLT = ? AND TASK_TYPE = ? AND REPORT_NAME = ? AND DATE_Y = ? AND DATE_M = ? GROUP BY DATE_Y, DATE_M' ); 
+						
+						selectLastBaseStmt.setString(1,userInfo.customerId);
+						selectLastBaseStmt.setString(2,userInfo.sysId);
+						selectLastBaseStmt.setString(3,userInfo.sysClt);
+						selectLastBaseStmt.setString(4,taskType);
+						selectLastBaseStmt.setString(5,tableData[i].column_0);
+						selectLastBaseStmt.setInteger(6,lastYearNode);
+						selectLastBaseStmt.setInteger(7,lastMonthNode);
+						
+						selectLastBaseStmt.executeQuery();
+						
+						var	lastBaseResult = selectLastBaseStmt.getResultSet();
+						var getLastBase = [];
+						
+						while(lastBaseResult.next())
+						{
+							getLastBase.push({
+								"result":lastBaseResult.getString(1)
+							});	
+						}
+						
+						lastBaseNumber = parseFloat(getLastBase[0].result);
+						
+						lastBaseResult.close();
+						selectLastBaseStmt.close();
+						
+						if(lastBaseNumber == 0.0 ){
+							trendValue = 9999.99;
+						}else{
+							trendValue = ((respTotalSecond - lastBaseNumber) / lastBaseNumber) * 100;
+						}
+					}
+					verifyResult.close();
+					verifyDataExistStmt.close();
+					
+					
+				
+					
+					
+					///// update TREND end
+					
 					upsertStmt.setString(1,userInfo.customerId);
 					upsertStmt.setString(2,tableData[i].column_0);
 					upsertStmt.setString(3,tableData[i].column_0);
 					upsertStmt.setString(4,userInfo.sysId);
 					upsertStmt.setString(5,userInfo.sysClt);
 					upsertStmt.setString(6,factorType);
-					upsertStmt.setString(7,userInfo.customerId);
-					upsertStmt.setString(8,userInfo.sysId);
-					upsertStmt.setString(9,userInfo.sysClt);
-					upsertStmt.setString(10,tableData[i].column_0);
-					upsertStmt.setString(11,factorType);
+					upsertStmt.setDouble(7,trendValue);
+					upsertStmt.setString(8,userInfo.customerId);
+					upsertStmt.setString(9,userInfo.sysId);
+					upsertStmt.setString(10,userInfo.sysClt);
+					upsertStmt.setString(11,tableData[i].column_0);
+					upsertStmt.setString(12,factorType);
 					
 	
 					
@@ -373,17 +469,90 @@ function handlePost() {
 					insertStmt.setDouble(12,respAvg);//response time avg
 					insertStmt.setDouble(13,respTotalSecond);//total resp time by second
 					
+					
+					///// update TREND start
+					var verifyDataExistStmt = conn.prepareStatement( 'SELECT COUNT (*) FROM "SMART_OPERATION"."CMWLP" WHERE CUSTOMER_ID = ? AND SYSTEM_ID = ? AND SYSTEM_CLT = ? AND TASK_TYPE = ? AND REPORT_NAME = ? AND DATE_Y = ? AND DATE_M = ?' ); 
+					
+					verifyDataExistStmt.setString(1,userInfo.customerId);
+					verifyDataExistStmt.setString(2,userInfo.sysId);
+					verifyDataExistStmt.setString(3,userInfo.sysClt);
+					verifyDataExistStmt.setString(4,taskType);
+					verifyDataExistStmt.setString(5,tableData[i].column_0);
+					verifyDataExistStmt.setInteger(6,lastYearNode);
+					verifyDataExistStmt.setInteger(7,lastMonthNode);
+					
+					verifyDataExistStmt.executeQuery();
+					var getCount = [];
+					var	verifyResult = verifyDataExistStmt.getResultSet();
+					
+				
+					while(verifyResult.next())
+					{
+						getCount.push({
+							"result":verifyResult.getString(1)
+						});	
+					}
+					
+					var countNumber = parseInt(getCount[0].result);
+					
+					if(countNumber == 0){
+						lastBaseNumber = 0.0;
+						trendValue = 9999.99;
+					}else{
+						var selectLastBaseStmt = conn.prepareStatement( 'SELECT SUM (RESP_TOTAL) FROM "SMART_OPERATION"."CMWLP" WHERE CUSTOMER_ID = ? AND SYSTEM_ID = ? AND SYSTEM_CLT = ? AND TASK_TYPE = ? AND REPORT_NAME = ? AND DATE_Y = ? AND DATE_M = ? GROUP BY DATE_Y, DATE_M' ); 
+						
+						selectLastBaseStmt.setString(1,userInfo.customerId);
+						selectLastBaseStmt.setString(2,userInfo.sysId);
+						selectLastBaseStmt.setString(3,userInfo.sysClt);
+						selectLastBaseStmt.setString(4,taskType);
+						selectLastBaseStmt.setString(5,tableData[i].column_0);
+						selectLastBaseStmt.setInteger(6,lastYearNode);
+						selectLastBaseStmt.setInteger(7,lastMonthNode);
+						
+						selectLastBaseStmt.executeQuery();
+						
+						var	lastBaseResult = selectLastBaseStmt.getResultSet();
+						var getLastBase = [];
+						
+						while(lastBaseResult.next())
+						{
+							getLastBase.push({
+								"result":lastBaseResult.getString(1)
+							});	
+						}
+						
+						lastBaseNumber = parseFloat(getLastBase[0].result);
+						
+						lastBaseResult.close();
+						selectLastBaseStmt.close();
+						
+						if(lastBaseNumber == 0.0 ){
+							trendValue = 9999.99;
+						}else{
+							trendValue = ((respTotalSecond - lastBaseNumber) / lastBaseNumber) * 100;
+						}
+					}
+					verifyResult.close();
+					verifyDataExistStmt.close();
+					
+					
+				
+					
+					
+					///// update TREND end
+					
 					upsertStmt.setString(1,userInfo.customerId);
 					upsertStmt.setString(2,tableData[i].column_0);
 					upsertStmt.setString(3,tableData[i].column_0);
 					upsertStmt.setString(4,userInfo.sysId);
 					upsertStmt.setString(5,userInfo.sysClt);
 					upsertStmt.setString(6,factorType);
-					upsertStmt.setString(7,userInfo.customerId);
-					upsertStmt.setString(8,userInfo.sysId);
-					upsertStmt.setString(9,userInfo.sysClt);
-					upsertStmt.setString(10,tableData[i].column_0);
-					upsertStmt.setString(11,factorType);
+					upsertStmt.setDouble(7,trendValue);
+					upsertStmt.setString(8,userInfo.customerId);
+					upsertStmt.setString(9,userInfo.sysId);
+					upsertStmt.setString(10,userInfo.sysClt);
+					upsertStmt.setString(11,tableData[i].column_0);
+					upsertStmt.setString(12,factorType);
 	
 					
 					insertStmt.addBatch(); 

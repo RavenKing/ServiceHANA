@@ -24,7 +24,7 @@ function handleGet() {
 	
 	//var queryStr = 'SELECT SUM( CPU_DB_TOTAL ) FROM "SMART_OPERATION"."CMWLH" WHERE CUSTOMER_ID = ? AND DATE_Y = ? AND DATA_M = ?';
 	
-	var queryStr = 'select top ? date_y, data_m, sum(cpu_total), sum(db_total), sum(step_num) from "SMART_OPERATION"."CMWLH" where customer_id = ? group by date_y, data_m order by date_y asc, data_m asc';
+	var queryStr = 'select top ? date_y, data_m, sum(cpu_total), sum(db_total), sum(step_num) from "SMART_OPERATION"."CMWLH" where customer_id = ? group by date_y, data_m order by date_y desc, data_m desc';
 	ppst = pconnSelect.prepareStatement(queryStr);
 	
 	ppst.setInteger(1,parseInt(monthCount));
