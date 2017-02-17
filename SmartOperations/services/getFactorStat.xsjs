@@ -102,31 +102,35 @@ function handleGet() {
 		getTotalStmt.setString(3,sysClt);
 		getTotalStmt.setString(4,factorName);
 		getTotalStmt.executeQuery();
-		
 		var totalEntries = [];
 		
-		var totalEntriesResult = getTotalStmt.getResultSet();
+		
+		var qy = 'SELECT TOP 1 "TABLE_ENTRIS_CUM" FROM "SMART_OPERATION"."CMTBL" WHERE "CUSTOMER_ID" = '+customerId+' AND "SYSTEM_ID" = \''+sysId+'\' AND "SYSTEM_CLT" = \''+sysClt+'\' AND "TABLE_NAME" = \''+factorName+'\' ORDER BY "DATE_Y" DESC, "DATE_M" DESC';
+		
+		var newone = pconnSelect.prepareStatement(qy);
+		newone.executeQuery();
+		var totalEntriesResult = newone.getResultSet();
+		
+		
 		while(totalEntriesResult.next()){
 			totalEntries.push({
 				"results": totalEntriesResult.getString(1)
 			})
 		}
-		
 		var initTotalEntries = parseInt(totalEntries[0].results);
 		
 		totalEntriesResult.close();
 		getTotalStmt.close();
 		
-		var queryStr = 'SELECT DATE_Y, DATE_M, TABLE_ENTRIS FROM "SMART_OPERATION"."CMTBL" WHERE CUSTOMER_ID = ? AND SYSTEM_ID = ? AND SYSTEM_CLT = ? AND TABLE_NAME = ? ORDER BY DATE_Y DESC, DATE_M DESC';
-		
+		var queryStr = 'SELECT "DATE_Y", "DATE_M", "TABLE_ENTRIS" FROM "SMART_OPERATION"."CMTBL" WHERE "CUSTOMER_ID" = '+customerId+' AND "SYSTEM_ID" = \''+sysId+'\' AND "SYSTEM_CLT" = \''+sysClt+'\' AND "TABLE_NAME" = \''+factorName+'\' ORDER BY "DATE_Y" DESC, "DATE_M" DESC';
 		ppst = pconnSelect.prepareStatement(queryStr);
 		
 		
-		ppst.setString(1,customerId);
+	/*	ppst.setString(1,customerId);
 		ppst.setString(2,sysId);
 		ppst.setString(3,sysClt);
 		ppst.setString(4,factorName);
-		
+	*/	
 		ppst.executeQuery();
 		
 		var output = {

@@ -1,6 +1,7 @@
 service namespace "sap.hana.smart.operation"{
 "SMART_OPERATION"."SMUSER" as "users";
 "SMART_OPERATION"."SMCUST" as "CUST";
+"SMART_OPERATION"."LOGONINFO" as "LOGONINFO";
 "SMART_OPERATION"."AUTHORIZATION" as "AUTH" key("USER_ID");
 "SMART_OPERATION"."AUTHORIZATION1" as "AUTH1" key("USER_ID");
 "SMART_OPERATION"."Cust_Region" as "COUNTRY" key("REGION","COUNTRY");
